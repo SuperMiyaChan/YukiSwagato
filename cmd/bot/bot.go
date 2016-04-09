@@ -34,6 +34,9 @@ var (
 	KHALED_SOUND_RANGE  = 0
 	CENA_SOUND_RANGE    = 0
 	ETHAN_SOUND_RANGE   = 0
+    WIN_SOUND_RANGE     = 0
+    LOSE_SOUND_RANGE    = 0
+    PAUSE_SOUND_RANGE   = 0
 
 	// Sound encoding settings
 	BITRATE        = 128
@@ -44,6 +47,9 @@ var (
 	TYPE_KHALED  = 1
 	TYPE_CENA    = 2
 	TYPE_ETHAN   = 3
+    TYPE_WIN     = 4
+    TYPE_LOSE    = 5
+    TYPE_PAUSE   = 6
 
 	// Owner
 	OWNER string
@@ -61,6 +67,14 @@ var (
 		"!eb",
 		"!ethanbradberry",
 		"!h3h3",
+        "!win",
+        "!victory",
+        "!success",
+        "!lose",
+        "!lost",
+        "!loss",
+        "!failure",
+        "!pause",
 	}
 )
 
@@ -155,6 +169,15 @@ var ETHAN []*Sound = []*Sound{
 	createSound("beat", 30, 250, TYPE_ETHAN),
 	createSound("sodiepop", 1, 250, TYPE_ETHAN),
 }
+var WIN []*Sound = []*Sound{
+    createSound("finalfantasy", 1, 250, TYPE_WIN),
+}
+var LOSE []*Sound = []*Sound{
+    createSound("kirby", 100, 250, TYPE_LOSE),
+}
+var PAUSE []*Sound = []*Sound{
+    createSound("battletoads", 100, 250, TYPE_PAUSE),
+}
 
 // Encode reads data from ffmpeg and encodes it using gopus
 func (s *Sound) Encode() {
@@ -201,6 +224,12 @@ func (s *Sound) Load() error {
 		path = fmt.Sprintf("audio/jc_%v.wav", s.Name)
 	} else if s.Type == TYPE_ETHAN {
 		path = fmt.Sprintf("audio/ethan_%v.wav", s.Name)
+    } else if s.Type == TYPE_WIN {
+		path = fmt.Sprintf("audio/win_%v.wav", s.Name)
+    } else if s.Type == TYPE_LOSE {
+		path = fmt.Sprintf("audio/lose_%v.wav", s.Name)
+    } else if s.Type == TYPE_PAUSE {
+		path = fmt.Sprintf("audio/pause_%v.wav", s.Name)
 	}
 
 	ffmpeg := exec.Command("ffmpeg", "-i", path, "-f", "s16le", "-ar", "48000", "-ac", "2", "pipe:1")
@@ -316,6 +345,36 @@ func getRandomSound(stype int) *Sound {
 		number := randomRange(0, ETHAN_SOUND_RANGE)
 
 		for _, item := range ETHAN {
+			i += item.Weight
+
+			if number < i {
+				return item
+			}
+		}
+        } else if stype == TYPE_WIN {
+		number := randomRange(0, WIN_SOUND_RANGE)
+
+		for _, item := range WIN {
+			i += item.Weight
+
+			if number < i {
+				return item
+			}
+		}
+        } else if stype == TYPE_LOSE {
+		number := randomRange(0, LOSE_SOUND_RANGE)
+
+		for _, item := range LOSE {
+			i += item.Weight
+
+			if number < i {
+				return item
+			}
+		}
+        } else if stype == TYPE_PAUSE {
+		number := randomRange(0, PAUSE_SOUND_RANGE)
+
+		for _, item := range PAUSE {
 			i += item.Weight
 
 			if number < i {
@@ -456,7 +515,7 @@ func playSound(play *Play, vc *discordgo.VoiceConnection) (err error) {
 
 func onReady(s *discordgo.Session, event *discordgo.Ready) {
 	log.Info("Recieved READY payload")
-	s.UpdateStatus(0, "airhornbot.com")
+	s.UpdateStatus(0, "Counter Call: Black Offensive")
 }
 
 func onGuildCreate(s *discordgo.Session, event *discordgo.GuildCreate) {
@@ -470,7 +529,7 @@ func onGuildCreate(s *discordgo.Session, event *discordgo.GuildCreate) {
 
 	for _, channel := range event.Guild.Channels {
 		if channel.ID == event.Guild.ID {
-			s.ChannelMessageSend(channel.ID, "**AIRHORN BOT READY FOR HORNING. TYPE `!AIRHORN` WHILE IN A VOICE CHANNEL TO ACTIVATE**")
+			s.ChannelMessageSend(channel.ID, "**Yuki Swagato in da house! I make sounds over the voice chat. Try to guess my commands. Here's a freebie, '!airhorn' **")
 			return
 		}
 	}
@@ -597,7 +656,13 @@ func onMessageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			stype = TYPE_ETHAN
 		} else if scontains(parts[0], "!anotha", "!anothaone") {
 			khaled = true
-		}
+        } else if scontains(parts[0], "!win", "!victory", "!success") {
+			stype = TYPE_WIN
+        } else if scontains(parts[0], "!lose", "!loss", "!failure", "!lost") {
+			stype = TYPE_LOSE
+        } else if scontains(parts[0], "!pause",) {
+			stype = TYPE_PAUSE
+        }
 
 		go enqueuePlay(m.Author, guild, sound, khaled, stype)
 	}
@@ -654,6 +719,21 @@ func main() {
 	log.Info("I'm ethan bradberry!")
 	for _, sound := range ETHAN {
 		ETHAN_SOUND_RANGE += sound.Weight
+		sound.Load()
+	}
+    	log.Info("I win!")
+	for _, sound := range WIN {
+		WIN_SOUND_RANGE += sound.Weight
+		sound.Load()
+	}
+    	log.Info("I lose! ;w;")
+	for _, sound := range LOSE {
+		LOSE_SOUND_RANGE += sound.Weight
+		sound.Load()
+	}
+        	log.Info("Pause the game!")
+	for _, sound := range PAUSE {
+		LOSE_SOUND_RANGE += sound.Weight
 		sound.Load()
 	}
 
